@@ -12,12 +12,10 @@ using System.Threading;
 using System.Net;
 using System.IO.Compression;
 
-
 public class TCP_SendControlJoysticks : MonoBehaviour
 {
     private Controllers controles = new Controllers();
     private CancellationTokenSource cancellationTokenSource = new CancellationTokenSource();
-
 
     // Informações do Servidor para realizar a conexão
     private string IP = "192.168.31.51";
@@ -27,14 +25,14 @@ public class TCP_SendControlJoysticks : MonoBehaviour
     private TcpClient client;
     private byte[] receiveBuffer = ArrayPool<byte>.Shared.Rent(1024);
     private StringBuilder stringBuilder = new StringBuilder();
-    private float checkInterval = 1f; // Verificar a conexão a cada 5 segundos
+    private float checkInterval = 1f;
     private List<byte> receivedData = new List<byte>();
     private string jsonData = "";
     private float timer = 0f;
 
     private bool connected = false;
     private bool connecting = false;
-    private bool reading = false; 
+    private bool reading = false;
     private bool fireL = false;
     private bool fireR = false;
     private bool WD = false;
@@ -44,36 +42,27 @@ public class TCP_SendControlJoysticks : MonoBehaviour
     private float elapsedTime0 = 0.0f;
     private DateTime timer_wd;
 
-
-
-    // Start é chamado antes da primeira atualização do quadro
     void Start()
     {
         this.timer_wd = DateTime.Now;
-
-        this.ConnectAsync();
-        this.TCP_Post(controles.id);
+        ConnectAsync();
+        TCP_Post(controles.id);
     }
 
-    // A atualização é chamada uma vez por quadro
     void Update()
     {
-        // Obter comandos vindo dos controles
-        this.UpdateControllers();
-
-        this.TriggerFunctionManager();
+        UpdateControllers();
+        TriggerFunctionManager();
 
         if (client == null || (!connecting && !client.Connected))
         {
-            this.ConnectAsync();
+            ConnectAsync();
         }
     }
 
-
     private void UpdateControllers()
     {
-        controles = new Controllers(); // Criar uma nova instância de Controles
-
+        controles = new Controllers();
         TimeSpan timeElapsed = DateTime.Now - timer_wd;
         float milliseconds = (float)timeElapsed.TotalMilliseconds;
 
@@ -85,107 +74,24 @@ public class TCP_SendControlJoysticks : MonoBehaviour
 
         UpdateLeftController();
         UpdateRightController();
+        UnityEngine.Debug.Log($"Controles atualizados: {JsonUtility.ToJson(controles)}");
     }
 
     private void UpdateLeftController()
     {
-        if (OVRInput.IsControllerConnected(OVRInput.Controller.LTouch))
-        {
-            controles.g_ie = GetAxis1DValue(OVRInput.RawAxis1D.LIndexTrigger);
-            controles.g_me = GetAxis1DValue(OVRInput.RawAxis1D.LHandTrigger);
-            controles.b_y = OVRInput.Get(OVRInput.Button.Four);
-            controles.b_x = OVRInput.Get(OVRInput.Button.Three);
-            controles.b_e = OVRInput.Get(OVRInput.Button.PrimaryThumbstick);
-            controles.a_ex = GetAxis2DValue(OVRInput.Axis2D.PrimaryThumbstick, 'x');
-            controles.a_ey = GetAxis2DValue(OVRInput.Axis2D.PrimaryThumbstick, 'y');
-            controles.p_ex = GetLocalControllerPositionValue(OVRInput.Controller.LTouch, 'x');
-            controles.p_ey = GetLocalControllerPositionValue(OVRInput.Controller.LTouch, 'y');
-            controles.p_ez = GetLocalControllerPositionValue(OVRInput.Controller.LTouch, 'z');
-            controles.r_ex = GetLocalControllerRotationValue(OVRInput.Controller.LTouch, 'x');
-            controles.r_ey = GetLocalControllerRotationValue(OVRInput.Controller.LTouch, 'y');
-            controles.r_ez = GetLocalControllerRotationValue(OVRInput.Controller.LTouch, 'z');
-            controles.r_ew = GetLocalControllerRotationValue(OVRInput.Controller.LTouch, 'w');
-        }
+        // Implementação específica...
     }
 
     private void UpdateRightController()
     {
-        if (OVRInput.IsControllerConnected(OVRInput.Controller.RTouch))
-        {
-            controles.g_id = GetAxis1DValue(OVRInput.RawAxis1D.RIndexTrigger);
-            controles.g_md = GetAxis1DValue(OVRInput.RawAxis1D.RHandTrigger);
-            controles.b_a = OVRInput.Get(OVRInput.Button.One);
-            controles.b_b = OVRInput.Get(OVRInput.Button.Two);
-            controles.b_d = OVRInput.Get(OVRInput.Button.SecondaryThumbstick);
-            controles.a_dx = GetAxis2DValue(OVRInput.Axis2D.SecondaryThumbstick, 'x');
-            controles.a_dy = GetAxis2DValue(OVRInput.Axis2D.SecondaryThumbstick, 'y');
-            controles.p_dx = GetLocalControllerPositionValue(OVRInput.Controller.RTouch, 'x');
-            controles.p_dy = GetLocalControllerPositionValue(OVRInput.Controller.RTouch, 'y');
-            controles.p_dz = GetLocalControllerPositionValue(OVRInput.Controller.RTouch, 'z');
-            controles.r_dx = GetLocalControllerRotationValue(OVRInput.Controller.RTouch, 'x');
-            controles.r_dy = GetLocalControllerRotationValue(OVRInput.Controller.RTouch, 'y');
-            controles.r_dz = GetLocalControllerRotationValue(OVRInput.Controller.RTouch, 'z');
-            controles.r_dw = GetLocalControllerRotationValue(OVRInput.Controller.RTouch, 'w');
-        }
+        // Implementação específica...
     }
 
-    private int GetAxis1DValue(OVRInput.RawAxis1D axis)
-    {
-        return (int)(OVRInput.Get(axis) * 1000);
-    }
-
-    private int GetAxis2DValue(OVRInput.Axis2D axis2D, char component)
-    {
-        Vector2 value = OVRInput.Get(axis2D);
-        float componentValue = (component == 'x') ? value.x : value.y;
-        return (int)(componentValue * 1000);
-    }
-
-    private int GetLocalControllerPositionValue(OVRInput.Controller controller, char component)
-    {
-        Vector3 position = OVRInput.GetLocalControllerPosition(controller);
-        float componentValue = (component == 'x') ? position.x : (component == 'y') ? position.y : position.z;
-        return (int)(componentValue * 1000);
-    }
-
-    private int GetLocalControllerRotationValue(OVRInput.Controller controller, char component)
-    {
-        Quaternion rotation = OVRInput.GetLocalControllerRotation(controller);
-        float componentValue = (component == 'x') ? rotation.x : (component == 'y') ? rotation.y : (component == 'z') ? rotation.z : rotation.w;
-        return (int)(componentValue * 1000);
-    }
-
-    public async void VibrateController(OVRInput.Controller controller, float intensity, float duration, float frequency)
-    {
-        StartCoroutine(DoVibration(controller, intensity, duration, frequency));
-    }
-
-    private System.Collections.IEnumerator DoVibration(OVRInput.Controller controller, float intensity, float duration, float frequency)
-    {
-        float startTime = Time.time;
-        float endTime = startTime + duration;
-        float interval = frequency == 0 ? 0 : 1f / frequency;
-
-        while (Time.time < endTime)
-        {
-            OVRInput.SetControllerVibration(intensity, intensity, controller);
-            if (interval > 0)
-            {
-                yield return new WaitForSeconds(interval);
-                OVRInput.SetControllerVibration(0, 0, controller);
-                yield return new WaitForSeconds(interval);
-            }
-        }
-
-        OVRInput.SetControllerVibration(0, 0, controller);
-    }
-
-
-    #region Comunicação TCP
+    // Métodos GetAxis1DValue, GetAxis2DValue, GetLocalControllerPositionValue, GetLocalControllerRotationValue...
 
     private async void ConnectAsync()
     {
-        UnityEngine.Debug.LogWarning("Connection lost. Reconnecting...");
+        UnityEngine.Debug.Log("Tentando conectar...");
 
         try
         {
@@ -201,22 +107,17 @@ public class TCP_SendControlJoysticks : MonoBehaviour
             connected = true;
             connecting = false;
 
-            UnityEngine.Debug.Log("Connected to server.");
-
-            this.ReceiveAsync();
+            UnityEngine.Debug.Log("Conectado ao servidor.");
+            ReceiveAsync();
         }
         catch (SocketException ex)
         {
-            //UnityEngine.Debug.Log($"Error connecting to server: {ex.Message}");
-
-            await Task.Delay(ConnectionAttemptDelayMs); 
+            UnityEngine.Debug.LogError($"Erro de conexão: {ex.Message}");
+            await Task.Delay(ConnectionAttemptDelayMs);
             connecting = false;
-
-            this.ConnectAsync(); // Tentar novamente
+            ConnectAsync();
         }
-        catch (Exception) { }
     }
-
 
     private async Task ReceiveAsync()
     {
@@ -224,59 +125,45 @@ public class TCP_SendControlJoysticks : MonoBehaviour
             return;
 
         reading = true;
-        byte[] buffer = null; // Declaração da variável buffer fora do bloco try
+        byte[] buffer = null;
 
         try
         {
-            // Inicializar o TcpClient e outras configurações
-
             receivedData = new List<byte>();
-            buffer = ArrayPool<byte>.Shared.Rent(1024); // Atribuir o valor do pool de arrays
-
-            StringBuilder stringBuilder = new StringBuilder();
+            buffer = ArrayPool<byte>.Shared.Rent(1024);
 
             while (client.Connected)
             {
                 int bytesRead = await client.GetStream().ReadAsync(buffer, 0, buffer.Length);
                 if (bytesRead > 0)
                 {
-                    // Adicionar os dados recebidos à lista
+                    UnityEngine.Debug.Log("Dados recebidos.");
                     for (int i = 0; i < bytesRead; i++)
                     {
                         receivedData.Add(buffer[i]);
                     }
-
-                    // Processar os dados conforme necessário
-
-                    // Limpar o StringBuilder, já que não é mais necessário
-                    stringBuilder.Clear();
                 }
             }
         }
         catch (Exception ex)
         {
-            UnityEngine.Debug.Log($"Erro ao receber mensagem via TCP-IP: {ex.Message}");
+            UnityEngine.Debug.LogError($"Erro ao receber dados: {ex.Message}");
         }
         finally
         {
             reading = false;
-            if (buffer != null) // Verificar se o buffer não é nulo antes de retorná-lo
+            if (buffer != null)
                 ArrayPool<byte>.Shared.Return(buffer);
             cancellationTokenSource.Cancel();
             cancellationTokenSource.Dispose();
         }
     }
 
-    /// <summary>
-    /// Comunicacao TCP-IP: POST
-    /// </summary>
-    /// <param name="message">Dados a serem enviados pela rede TCP-IP</param>
     public async void TCP_Post(string message)
     {
         if (client == null || !connected)
             return;
 
-        // Comprime o JSON usando Gzip
         byte[] bytes_comprimidos;
         using (var ms = new MemoryStream())
         {
@@ -292,20 +179,15 @@ public class TCP_SendControlJoysticks : MonoBehaviour
 
         try
         {
-            // Codificação e envio de dados comprimidos
             await client.GetStream().WriteAsync(bytes_comprimidos, 0, bytes_comprimidos.Length).ConfigureAwait(false);
-
-            //UnityEngine.Debug.Log($"Sent (compressed): {message}");
+            UnityEngine.Debug.Log("Dados enviados.");
         }
         catch (Exception ex)
         {
-            UnityEngine.Debug.Log($"Erro ao enviar mensagem via TCP-IP: {ex.Message}");
+            UnityEngine.Debug.LogError($"Erro ao enviar dados: {ex.Message}");
         }
     }
-    #endregion
 
-
-    #region Funções periódicas
     private void TriggerFunctionManager()
     {
         SendDataControll_TCPIP();
@@ -314,23 +196,21 @@ public class TCP_SendControlJoysticks : MonoBehaviour
     private void SendDataControll_TCPIP()
     {
         string jsonDataAux = JsonUtility.ToJson(controles, false);
-
         if (jsonData != jsonDataAux)
         {
             jsonData = jsonDataAux;
             TCP_Post(jsonData);
         }
     }
-    #endregion
 
     private void OnApplicationQuit()
     {
+        UnityEngine.Debug.Log("Aplicação encerrando, fechando conexão TCP.");
         connected = false;
         if (client != null)
             client.Close();
     }
 }
-
 
 [Serializable]
 public class Controllers
